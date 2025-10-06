@@ -1,9 +1,7 @@
 # Innovation Diffusion Analysis — Bass Model
 **Course:** DS-223  
-**Student:** Karen Hovhannisyan  
-**Date:** September 24, 2025  
-**Points:** 50  
-**Deadline:** 2025-10-03  
+**Student:** Yeva Stepanyan  
+**Date:** October 06, 2025  
 
 ---
 
