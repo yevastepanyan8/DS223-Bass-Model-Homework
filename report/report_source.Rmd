@@ -1,0 +1,182 @@
+---
+title: "Bass Model Homework"
+author: "Yeva Stepanyan"
+date: "2025-10-06"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Introduction
+
+This report analyzes the diffusion of Samsung’s Neo QLED 8K TV, one of TIME’s 2024 Best Innovations, using the Bass Diffusion Model.
+The Bass model helps describe how new technologies spread in a market, distinguishing between adoption driven by innovation (external influence, like advertising) and imitation (social influence, like word-of-mouth).
+
+To estimate the parameters of the model, we use historical OLED/LCD TV shipment data from 2016 to 2023 as a look-alike product. This approach assumes that the adoption of Samsung’s Neo QLED 8K will follow a similar pattern to that of previous high-end display technologies.
+
+
+## Similarity Between OLED TVs and Samsung Neo QLED 8K TVs
+
+The OLED TV is an appropriate look-alike innovation for Samsung’s Neo QLED 8K TV because both represent major advances in flat-panel display technology targeting the premium television market. Each innovation improves picture quality, color accuracy, and viewing experience through enhanced panel design and light-emission control. OLED technology introduced self-emissive pixels, eliminating the need for backlighting and offering perfect blacks and high contrast ratios. Similarly, Samsung’s Neo QLED 8K TV builds on these improvements by using mini-LED backlighting and quantum-dot filtering to achieve comparable color depth and brightness while increasing resolution to 8K. Functionally, both serve the same consumer purpose—high-end home entertainment systems that emphasize superior visual performance—and both rely on similar market drivers such as technological innovation, early-adopter enthusiasm, and social imitation effects. For this reason, historical OLED adoption patterns provide a credible basis for forecasting the diffusion of Neo QLED 8K TVs using the Bass model.
+
+
+# 2. Data Description
+
+The dataset contains yearly global shipments (in millions of units) of OLED TVs from 2016 to 2023, taken from Statista and other market research sources.
+These values represent total worldwide adoption and serve as a proxy for historical TV innovation diffusion.
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+library(knitr)
+library(diffusion)
+library(readxl)
+```
+```{r}
+df <- read_excel("dataset1.xlsx") #sales are in millions here
+df
+```
+A quick visualization shows the overall trend in OLED TV shipments.
+
+```{r}
+ggplot(df, aes(x = year, y = sales)) +
+  geom_bar(stat = 'identity') +
+  ggtitle('Observed shipments (millions)') +
+  ylab('Shipments (millions)') + xlab('Year')
+```
+
+The sales show steady growth until 2021, followed by a slight decline — typical of an innovation nearing market saturation.
+
+# 3. Methodology
+
+The Bass model defines adoption at time $t$ as:
+
+$$f(t) = \frac{(p+q)^2}{p} \cdot \frac{e^{-(p+q)t}}{\left(1 + \frac{q}{p}e^{-(p+q)t}\right)^2}$$
+
+where:
+
+- $p$ = coefficient of innovation (influence of external sources)
+- $q$ = coefficient of imitation (influence of prior adopters)  
+- $M$ = total market potential (maximum possible adopters)
+
+The model is fitted using non-linear least squares (NLS) to estimate $p$, $q$, and $M$.
+```{r}
+bass.f <- function(t, p, q) {
+  ((p+q)^2 / p) * exp(-(p+q)*t) / (1 + (q/p) * exp(-(p+q)*t))^2
+}
+bass.F <- function(t, p, q) {
+  (1 - exp(-(p+q)*t)) / (1 + (q/p) * exp(-(p+q)*t))
+}
+```
+
+```{r}
+sales <- df$sales
+t <- 1:length(sales)
+
+start_m <- sum(sales)*3
+start_p <- 0.01
+start_q <- 0.4
+```
+
+```{r}
+bass_nls <- nls(sales ~ m * (((p+q)^2/p) * exp(-(p+q)*t)) /
+                (1 + (q/p) * exp(-(p+q)*t))^2,
+                start = list(m = start_m, p = start_p, q = start_q),
+                control = nls.control(maxiter = 200, warnOnly = TRUE))
+
+summary(bass_nls)
+```
+
+# 4. Results and Discussion
+
+The estimated parameters of the Bass model are:
+
+```{r}
+params <- coef(bass_nls)
+m_est <- params["m"]
+p_est <- params["p"]
+q_est <- params["q"]
+
+cat("Estimated parameters (nls):\n")
+print(params)
+```
+
+# Interpretation:
+
+The p (innovation coefficient) is relatively low, suggesting adoption was mainly driven by word-of-mouth rather than advertising.
+
+The q (imitation coefficient) is higher, which indicates a strong social contagion effect — consumers adopt after seeing others do so.
+
+The market potential M represents the estimated total number of units that can be adopted worldwide.
+
+
+# Predicted Adoption Path
+
+Using the fitted parameters, the predicted number of adopters and cumulative adoption from 2016 to 2030 are:
+```{r}
+t_fore <- 1:15 # 2016..2030
+years_fore <- 2016 + (t_fore - 1)
+pred_fore <- m_est * bass.f(t_fore, p_est, q_est)
+cum_fore <- cumsum(pred_fore)
+
+pred_df <- data.frame(year = years_fore,
+                      pred = pred_fore,
+                      cum = cum_fore)
+knitr::kable(round(pred_df,3), caption = "Predicted adopters (millions) and cumulative adopters")
+```
+# Model Fit and Visualization
+
+```{r}
+df$pred_in_sample <- pred_df$pred[1:nrow(df)]
+ggplot() +
+  geom_bar(data = df, aes(x = year, y = sales), stat = 'identity', alpha = 0.6) +
+  geom_point(data = df, aes(x = year, y = pred_in_sample), color = 'red', size = 2) +
+  ggtitle("Observed shipments (bars) and Bass model predictions (red points)") +
+  ylab('Shipments (millions)') + xlab('Year')
+```
+
+# Adoption Density Function
+
+```{r}
+ggplot(data.frame(t = 1:15), aes(t)) +
+  stat_function(fun = function(x) bass.f(x, p_est, q_est), geom='line') +
+  ggtitle("Model f(t) (adoption density) -- fitted")
+```
+
+```{r}
+t_star <- log(q_est / p_est) / (p_est + q_est)
+cat(sprintf("Peak adoption at t* = %.2f years after 2016 → year approx = %.2f\n",
+            t_star, 2016 + t_star))
+
+```
+
+```{r}
+dir.create("img", showWarnings = FALSE)
+ggsave("img/observed_vs_pred.png", width = 8, height = 5)
+
+write.csv(pred_df, "predicted_adopters_2016_2030.csv", row.names = FALSE)
+
+knitr::kable(data.frame(parameter = c("m","p","q"),
+                       estimate = c(m_est, p_est, q_est)),
+             caption = "Fitted Bass parameters")
+```
+
+# 5. Conclusion
+
+The Bass model effectively describes the diffusion of high-end display technologies.
+For the OLED TV data, the estimated parameters indicate that the adoption peak occurred around 2022, followed by a gradual slowdown as the market matured.
+
+Assuming the Neo QLED 8K follows a similar pattern, its diffusion is expected to reach peak adoption within several years of launch, driven primarily by social influence rather than pure innovation.
+
+This model can support future forecasting, production planning, and marketing strategy design for similar technology products.
+
+# 6. References
+
+Bass, F. M. (1969). A New Product Growth Model for Consumer Durables. Management Science, 15(5), 215–227.
+
+Statista (2024). Global OLED TV Shipments from 2016 to 2023 (in millions).
+
+Samsung Electronics. (2024). Neo QLED 8K Product Information.
+
