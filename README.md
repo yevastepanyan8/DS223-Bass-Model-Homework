@@ -5,7 +5,7 @@
 
 ---
 
-## 📖 Project Overview
+## Project Overview
 This project applies the **Bass Diffusion Model** to analyze and forecast the adoption of Samsung’s **Neo QLED 8K TV** innovation (from TIME’s 2024 Innovations List).  
 To estimate Bass parameters, historical adoption data of **LCD TVs** was used as a look-alike innovation.
 
@@ -17,14 +17,12 @@ The goal is to:
 
 ---
 
-## 🧩 Data Sources
+## Data Sources
 - **OLED / LCD TV shipments (2016–2023)** – from Statista and industry reports (used for global analysis).  
-- **Sony LCD TV unit sales (2012–2022)** – used for manufacturer-level comparison.  
-- All data are stored in the `/data/` directory in `.csv` format.
 
 ---
 
-## 🧮 Methods
+## Methods
 - Implemented the **Bass Diffusion Model** using `R` and `nls()` (non-linear least squares).  
 - Parameters estimated:
   - **p**: coefficient of innovation (external influence)  
@@ -34,7 +32,7 @@ The goal is to:
 
 ---
 
-## 📊 Results Summary
+## Results Summary
 | Parameter | Description | Estimated Value |
 |------------|--------------|----------------:|
 | p | Innovation coefficient | 0.00824 |
@@ -47,14 +45,14 @@ The goal is to:
 
 ---
 
-## 🌍 Scope
+## Scope
 - Analysis performed on **global shipments** (2016–2023).  
 - Supplementary manufacturer-level data from Sony used for comparison.  
 - Predictions extended to **2030**.
 
 ---
 
-## 🗂️ Project Structure
+## Project Structure
 project_root/
 │
 ├── README.md 
